@@ -35,10 +35,15 @@ const LoginPage = () => {
 
   return (
     <main className="container page">
-      <section className="form-card">
-        <h2>Login</h2>
-        <p>Access your CyberSafe account.</p>
+      <section className="ops-head compact">
+        <div>
+          <p className="hero-kicker">SECURE ACCESS GATEWAY</p>
+          <h2>Login to CyberSafe</h2>
+          <p>Authenticate your session to access reporting, tracking, and command tools.</p>
+        </div>
+      </section>
 
+      <section className="form-card tactical-card">
         <form onSubmit={onSubmit} className="form-grid">
           <label>
             Email

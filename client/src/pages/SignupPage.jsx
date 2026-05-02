@@ -31,10 +31,15 @@ const SignupPage = () => {
 
   return (
     <main className="container page">
-      <section className="form-card">
-        <h2>Create Account</h2>
-        <p>Register to submit and track cybercrime reports.</p>
+      <section className="ops-head compact">
+        <div>
+          <p className="hero-kicker">IDENTITY REGISTRATION</p>
+          <h2>Create CyberSafe Account</h2>
+          <p>Register to report incidents, run phishing checks, and track your case history.</p>
+        </div>
+      </section>
 
+      <section className="form-card tactical-card">
         <form onSubmit={onSubmit} className="form-grid">
           <label>
             Name

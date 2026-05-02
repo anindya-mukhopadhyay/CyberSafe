@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   createReport,
+  getAdminOverview,
   getAllReports,
   getMyReports,
   updateReportStatus,
@@ -11,6 +12,7 @@ const router = Router();
 
 router.post('/', protect, createReport);
 router.get('/my', protect, getMyReports);
+router.get('/overview', protect, adminOnly, getAdminOverview);
 router.get('/', protect, adminOnly, getAllReports);
 router.patch('/:id/status', protect, adminOnly, updateReportStatus);
 

@@ -33,6 +33,28 @@ const reportSchema = new mongoose.Schema(
       enum: ['pending', 'investigating', 'resolved'],
       default: 'pending',
     },
+    severity: {
+      type: String,
+      enum: ['low', 'medium', 'high', 'critical'],
+      default: 'medium',
+    },
+    statusHistory: [
+      {
+        status: {
+          type: String,
+          enum: ['pending', 'investigating', 'resolved'],
+          required: true,
+        },
+        changedAt: {
+          type: Date,
+          default: Date.now,
+        },
+        changedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+        },
+      },
+    ],
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

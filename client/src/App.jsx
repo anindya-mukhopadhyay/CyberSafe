@@ -1,10 +1,12 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
+import CyberBackdrop from './components/CyberBackdrop';
 import Navbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
+import MyCasesPage from './pages/MyCasesPage';
 import PhishingPage from './pages/PhishingPage';
 import ReportPage from './pages/ReportPage';
 import SignupPage from './pages/SignupPage';
@@ -14,6 +16,7 @@ const App = () => {
 
   return (
     <div className="app-shell">
+      <CyberBackdrop />
       <Navbar />
 
       <Routes>
@@ -27,6 +30,14 @@ const App = () => {
           element={
             <ProtectedRoute>
               <ReportPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/my-cases"
+          element={
+            <ProtectedRoute>
+              <MyCasesPage />
             </ProtectedRoute>
           }
         />

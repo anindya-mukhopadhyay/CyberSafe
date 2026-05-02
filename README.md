@@ -1,13 +1,13 @@
 # CyberSafe - Cybercrime Reporting and Phishing Detection System
 
-CyberSafe is a full-stack web application where users can report cybercrime incidents and check suspicious URLs for phishing risk. Admin users can review all reports, filter cases, and update investigation status.
+CyberSafe is a full-stack web app that lets citizens report cyber incidents, scan suspicious URLs for phishing risk, and track case progress. Admin users get a command-center dashboard for filtering, searching, and resolving reports.
 
 ## 1. Tech Stack
 
 - Frontend: React + Vite
 - Backend: Node.js + Express
 - Database: MongoDB + Mongoose
-- Auth: JWT token-based authentication
+- Auth: JWT + role-based route protection
 
 ## 2. Complete Folder Structure
 
@@ -25,6 +25,7 @@ CyberSafe/
 │       ├── api/
 │       │   └── axios.js
 │       ├── components/
+│       │   ├── CyberBackdrop.jsx
 │       │   ├── Navbar.jsx
 │       │   └── ProtectedRoute.jsx
 │       ├── context/
@@ -33,6 +34,7 @@ CyberSafe/
 │           ├── AdminDashboardPage.jsx
 │           ├── HomePage.jsx
 │           ├── LoginPage.jsx
+│           ├── MyCasesPage.jsx
 │           ├── PhishingPage.jsx
 │           ├── ReportPage.jsx
 │           └── SignupPage.jsx
@@ -64,46 +66,44 @@ CyberSafe/
 └── README.md
 ```
 
-## 3. Core Features Implemented
+## 3. Core Features
 
-### 3.1 User Authentication
+### 3.1 Authentication
 
 - Signup and login with JWT
-- Password hashing using bcrypt
-- Role-based users (`user`, `admin`)
-- Protected backend routes via middleware
+- Password hashing with bcrypt
+- Role-based access (`user`, `admin`)
 
-### 3.2 Cybercrime Report Form
+### 3.2 Cybercrime Reporting
 
-- Fields included:
+- Submit incidents with:
   - Name
   - Email
-  - Incident Type (`phishing`, `fraud`, `harassment`, `identity_theft`, `other`)
+  - Incident type
   - Description
-  - Optional URL/Phone
-- Stores reports with default status `pending`
+  - Optional URL/phone
+- Automatic severity scoring (`low`, `medium`, `high`, `critical`)
+- Status history tracking (`pending`, `investigating`, `resolved`)
 
-### 3.3 Admin Dashboard
+### 3.3 Admin Command Center
 
-- View all reports
-- Filter by incident type and status
-- Update status to `investigating` or `resolved`
+- Dashboard KPI cards (total, pending, investigating, resolved, critical, last 24h)
+- Search + filter by type/status/severity
+- Update report status to investigating/resolved
+- Tactical snapshot of top incident type
 
 ### 3.4 Phishing Detection
 
-- Input URL and evaluate risk
-- Detection logic flags:
-  - Suspicious top-level domains
-  - Risky keywords in URL/domain
-  - IP-based domains
-  - Obfuscated patterns (`@`, too many subdomains, long domain)
-- Returns risk score and reason list
+- URL input scanner endpoint
+- Flags suspicious TLDs, keywords, obfuscation patterns, IP domains
+- Returns score + reasons + suspicious flag
 
-### 3.5 Responsive Modern UI
+### 3.5 UI/UX Enhancements
 
-- Clean layout with reusable cards/forms/buttons
-- Responsive navbar and dashboard for desktop/mobile
-- Protected frontend routes for report and admin pages
+- Police-style cyber command-center theme
+- Animated hacking background (grid + scanline + binary rain)
+- Responsive mobile/desktop layouts
+- My Cases page for users to track their submitted reports
 
 ## 4. API Routes
 
@@ -111,20 +111,21 @@ Base URL: `http://localhost:5000/api`
 
 ### Auth
 
-- `POST /auth/signup` - register new user
-- `POST /auth/login` - login user
-- `GET /auth/me` - get current user (protected)
+- `POST /auth/signup`
+- `POST /auth/login`
+- `GET /auth/me` (protected)
 
 ### Reports
 
-- `POST /reports` - create report (protected)
-- `GET /reports/my` - get current user's reports (protected)
-- `GET /reports` - get all reports (admin only, supports query `type`, `status`)
-- `PATCH /reports/:id/status` - update report status (admin only)
+- `POST /reports` (protected)
+- `GET /reports/my` (protected)
+- `GET /reports/overview` (admin only)
+- `GET /reports` (admin only, query: `type`, `status`, `severity`, `q`)
+- `PATCH /reports/:id/status` (admin only)
 
 ### Phishing
 
-- `POST /phishing/check-url` - analyze URL for phishing risk
+- `POST /phishing/check-url`
 
 ## 5. Local Setup (Step-by-Step)
 
@@ -135,12 +136,16 @@ cd server && npm install
 cd ../client && npm install
 ```
 
-### Step 2: Configure environment variables
+### Step 2: Create env files
 
-1. Create `server/.env` from `server/.env.example`
-2. Create `client/.env` from `client/.env.example`
+```bash
+cp server/.env.example server/.env
+cp client/.env.example client/.env
+```
 
-Example `server/.env`:
+### Step 3: Configure backend env
+
+Edit `server/.env`:
 
 ```env
 PORT=5000
@@ -151,30 +156,19 @@ CLIENT_URL=http://localhost:5173
 ADMIN_EMAIL=admin@cybersafe.com
 ```
 
-Example `client/.env`:
+### Step 4: Start MongoDB
 
-```env
-VITE_API_BASE_URL=http://localhost:5000/api
-```
+- Local MongoDB: run `mongod`
+- Or use MongoDB Atlas URI in `MONGO_URI`
 
-### Step 3: Start MongoDB
-
-If local MongoDB is installed:
-
-```bash
-mongod
-```
-
-Or use MongoDB Atlas and set `MONGO_URI` accordingly.
-
-### Step 4: Run backend
+### Step 5: Run backend
 
 ```bash
 cd server
 npm run dev
 ```
 
-### Step 5: Run frontend
+### Step 6: Run frontend
 
 Open a second terminal:
 
@@ -183,22 +177,27 @@ cd client
 npm run dev
 ```
 
-### Step 6: Use the app
+### Step 7: Use the app
 
 - Frontend: `http://localhost:5173`
 - Backend health: `http://localhost:5000/api/health`
 
-## 6. How to Access Admin Dashboard
+## 6. Admin Access Setup
 
 - Set `ADMIN_EMAIL` in `server/.env`.
-- Signup using that same email.
-- That account is assigned role `admin` automatically.
+- Signup using the same email.
+- That user is automatically assigned `admin` role.
 - Login and open `/admin`.
 
-## 7. Suggested Next Improvements
+## 7. Validation Done
 
-- Add email verification and password reset
-- Add pagination for admin reports
-- Integrate ML/scanner APIs (VirusTotal, Google Safe Browsing)
-- Add audit logs and SIEM integration
-- Add automated tests (Jest + Supertest + React Testing Library)
+- Frontend production build successful
+- Backend syntax checks passed
+
+## 8. Next Upgrade Ideas
+
+- Evidence upload (screenshots/documents)
+- Email alerts for status changes
+- Pagination + CSV export for admin reports
+- Integrate external threat intelligence APIs
+- Add automated tests (Jest/Supertest/RTL)

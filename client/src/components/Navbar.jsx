@@ -8,19 +8,21 @@ const Navbar = () => {
     <header className="navbar">
       <div className="container nav-inner">
         <Link to="/" className="brand">
-          CyberSafe
+          CYBERSAFE OPS
         </Link>
 
         <nav className="nav-links">
           <NavLink to="/">Home</NavLink>
           <NavLink to="/phishing">Phishing Check</NavLink>
           {isAuthenticated && <NavLink to="/report">Report Incident</NavLink>}
-          {user?.role === 'admin' && <NavLink to="/admin">Admin Dashboard</NavLink>}
+          {isAuthenticated && <NavLink to="/my-cases">My Cases</NavLink>}
+          {user?.role === 'admin' && <NavLink to="/admin">Command Center</NavLink>}
         </nav>
 
         <div className="nav-actions">
           {isAuthenticated ? (
             <>
+              <span className="live-indicator">LIVE</span>
               <span className="user-chip">{user?.name}</span>
               <button className="btn btn-secondary" onClick={logout}>
                 Logout

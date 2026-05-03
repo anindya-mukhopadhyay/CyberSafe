@@ -22,6 +22,7 @@ const ReportPage = () => {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [evidenceFiles, setEvidenceFiles] = useState([]);
 
   const urgency = useMemo(() => {
     const text = `${form.description} ${form.urlOrPhone}`.toLowerCase();
@@ -44,9 +45,22 @@ const ReportPage = () => {
     setLoading(true);
 
     try {
-      await api.post('/reports', form);
+      const formData = new FormData();
+      Object.entries(form).forEach(([key, value]) => {
+        formData.append(key, value);
+      });
+      evidenceFiles.forEach((file) => {
+        formData.append('evidenceFiles', file);
+      });
+
+      await api.post('/reports', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
       setMessage('Case filed successfully. Command center has received your report.');
       setForm((prev) => ({ ...initialForm, name: prev.name, email: prev.email }));
+      setEvidenceFiles([]);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to submit report');
     } finally {
@@ -121,6 +135,29 @@ const ReportPage = () => {
                 placeholder="malicious-domain.example or +91xxxxxxxxxx"
               />
             </label>
+
+            <label>
+              Upload Evidence Files (Optional)
+              <input
+                type="file"
+                multiple
+                accept=".png,.jpg,.jpeg,.webp,.pdf,.txt"
+                onChange={(e) => setEvidenceFiles(Array.from(e.target.files || []))}
+              />
+            </label>
+
+            {evidenceFiles.length > 0 && (
+              <div className="selected-files">
+                <strong>Selected Files:</strong>
+                <ul>
+                  {evidenceFiles.map((file) => (
+                    <li key={`${file.name}-${file.size}`}>
+                      {file.name} ({Math.ceil(file.size / 1024)} KB)
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             {message && <p className="success-text">{message}</p>}
             {error && <p className="error-text">{error}</p>}

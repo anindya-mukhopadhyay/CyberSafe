@@ -585,6 +585,34 @@ textarea:focus {
   margin-bottom: 0.3rem;
 }
 
+.selected-files,
+.evidence-links {
+  border: 1px solid rgba(111, 168, 246, 0.28);
+  border-radius: 10px;
+  background: rgba(16, 36, 78, 0.55);
+  padding: 0.6rem 0.75rem;
+}
+
+.selected-files ul,
+.evidence-links ul {
+  margin: 0.35rem 0 0;
+  padding-left: 1rem;
+}
+
+.selected-files li,
+.evidence-links li {
+  margin-bottom: 0.25rem;
+}
+
+.evidence-links a {
+  color: var(--primary-soft);
+  text-decoration: underline;
+}
+
+.evidence-links a:hover {
+  color: #d6f6ff;
+}
+
 .risk-meter-wrap {
   display: grid;
   gap: 0.45rem;

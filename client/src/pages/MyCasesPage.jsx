@@ -1,26 +1,53 @@
 import { useEffect, useState } from 'react';
+import { io } from 'socket.io-client';
 import api from '../api/axios';
+import { useAuth } from '../context/AuthContext';
 
 const MyCasesPage = () => {
+  const { user } = useAuth();
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    const fetchMyReports = async () => {
-      try {
+  const fetchMyReports = async (silent = false) => {
+    try {
+      if (!silent) {
         setLoading(true);
-        const { data } = await api.get('/reports/my');
-        setReports(data.reports || []);
-      } catch (err) {
-        setError(err.response?.data?.message || 'Failed to load your reports');
-      } finally {
+      }
+      const { data } = await api.get('/reports/my');
+      setReports(data.reports || []);
+      setError('');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to load your reports');
+    } finally {
+      if (!silent) {
         setLoading(false);
       }
-    };
+    }
+  };
 
+  useEffect(() => {
     fetchMyReports();
   }, []);
+
+  useEffect(() => {
+    if (!user?.id) {
+      return undefined;
+    }
+
+    const socket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000', {
+      transports: ['websocket'],
+    });
+
+    socket.emit('cases:join', user.id);
+    socket.on('reports:updated', () => {
+      fetchMyReports(true);
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [user?.id]);
 
   return (
     <main className="container page">
@@ -57,9 +84,24 @@ const MyCasesPage = () => {
                 <strong>Evidence:</strong> {report.urlOrPhone || 'Not provided'}
               </p>
               <p>
-                <strong>Latest Update:</strong>{' '}
-                {new Date(report.updatedAt).toLocaleString()}
+                <strong>Latest Update:</strong> {new Date(report.updatedAt).toLocaleString()}
               </p>
+
+              {report.evidenceFiles?.length > 0 && (
+                <div className="evidence-links">
+                  <strong>Attached Evidence Files:</strong>
+                  <ul>
+                    {report.evidenceFiles.map((file) => (
+                      <li key={file.filename}>
+                        <a href={file.url} target="_blank" rel="noreferrer">
+                          {file.originalName}
+                        </a>{' '}
+                        ({Math.ceil(file.size / 1024)} KB)
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </article>
           ))}
         </section>

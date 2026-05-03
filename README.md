@@ -1,13 +1,16 @@
 # CyberSafe - Cybercrime Reporting and Phishing Detection System
 
-CyberSafe is a full-stack web app that lets citizens report cyber incidents, scan suspicious URLs for phishing risk, and track case progress. Admin users get a command-center dashboard for filtering, searching, and resolving reports.
+CyberSafe is a full-stack web app that lets citizens report cyber incidents, scan suspicious URLs for phishing risk, upload evidence, and track case progress. Admin users get a police-style command center for live monitoring, filtering, search, and case resolution.
 
 ## 1. Tech Stack
 
 - Frontend: React + Vite
 - Backend: Node.js + Express
 - Database: MongoDB + Mongoose
+- Realtime: Socket.IO
 - Auth: JWT + role-based route protection
+- Email alerts: Nodemailer (SMTP)
+- File uploads: Multer
 
 ## 2. Complete Folder Structure
 
@@ -41,18 +44,21 @@ CyberSafe/
 ├── server/
 │   ├── .env.example
 │   ├── package.json
+│   ├── uploads/
 │   └── src/
 │       ├── app.js
 │       ├── server.js
 │       ├── config/
-│       │   └── db.js
+│       │   ├── db.js
+│       │   └── socket.js
 │       ├── controllers/
 │       │   ├── authController.js
 │       │   ├── phishingController.js
 │       │   └── reportController.js
 │       ├── middleware/
 │       │   ├── authMiddleware.js
-│       │   └── errorMiddleware.js
+│       │   ├── errorMiddleware.js
+│       │   └── uploadMiddleware.js
 │       ├── models/
 │       │   ├── Report.js
 │       │   └── User.js
@@ -61,6 +67,7 @@ CyberSafe/
 │       │   ├── phishingRoutes.js
 │       │   └── reportRoutes.js
 │       └── utils/
+│           ├── emailService.js
 │           └── phishingUtils.js
 ├── .gitignore
 └── README.md
@@ -82,15 +89,17 @@ CyberSafe/
   - Incident type
   - Description
   - Optional URL/phone
+  - Optional evidence files (`.png`, `.jpg`, `.jpeg`, `.webp`, `.pdf`, `.txt`)
 - Automatic severity scoring (`low`, `medium`, `high`, `critical`)
 - Status history tracking (`pending`, `investigating`, `resolved`)
 
 ### 3.3 Admin Command Center
 
 - Dashboard KPI cards (total, pending, investigating, resolved, critical, last 24h)
-- Search + filter by type/status/severity
+- Search + filter by type/status/severity/keyword
 - Update report status to investigating/resolved
 - Tactical snapshot of top incident type
+- Live dashboard updates via WebSocket events
 
 ### 3.4 Phishing Detection
 
@@ -98,12 +107,22 @@ CyberSafe/
 - Flags suspicious TLDs, keywords, obfuscation patterns, IP domains
 - Returns score + reasons + suspicious flag
 
-### 3.5 UI/UX Enhancements
+### 3.5 User Case Tracking
+
+- My Cases page with live status updates
+- Evidence file links visible on case cards
+
+### 3.6 Notifications
+
+- Optional SMTP-based email alerts:
+  - Admin email when a new report is filed
+  - Reporter email when case status changes
+
+### 3.7 UI/UX Enhancements
 
 - Police-style cyber command-center theme
 - Animated hacking background (grid + scanline + binary rain)
-- Responsive mobile/desktop layouts
-- My Cases page for users to track their submitted reports
+- Responsive desktop/mobile layouts
 
 ## 4. API Routes
 
@@ -117,7 +136,7 @@ Base URL: `http://localhost:5000/api`
 
 ### Reports
 
-- `POST /reports` (protected)
+- `POST /reports` (protected, multipart form data, field name: `evidenceFiles`)
 - `GET /reports/my` (protected)
 - `GET /reports/overview` (admin only)
 - `GET /reports` (admin only, query: `type`, `status`, `severity`, `q`)
@@ -127,7 +146,20 @@ Base URL: `http://localhost:5000/api`
 
 - `POST /phishing/check-url`
 
-## 5. Local Setup (Step-by-Step)
+### Static Evidence
+
+- `GET /uploads/:filename`
+
+## 5. Realtime Events (Socket.IO)
+
+Server emits:
+- `reports:updated` for new reports and status updates
+
+Client joins:
+- Admin room: `dashboard:join`
+- User room: `cases:join` with user id
+
+## 6. Local Setup (Step-by-Step)
 
 ### Step 1: Install dependencies
 
@@ -154,21 +186,38 @@ JWT_SECRET=replace_with_strong_secret
 JWT_EXPIRES_IN=7d
 CLIENT_URL=http://localhost:5173
 ADMIN_EMAIL=admin@cybersafe.com
+
+ENABLE_EMAIL_ALERTS=false
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your_smtp_user
+SMTP_PASS=your_smtp_password
+FROM_EMAIL=CyberSafe <no-reply@cybersafe.com>
 ```
 
-### Step 4: Start MongoDB
+### Step 4: Configure frontend env
+
+Edit `client/.env`:
+
+```env
+VITE_API_BASE_URL=http://localhost:5000/api
+VITE_SOCKET_URL=http://localhost:5000
+```
+
+### Step 5: Start MongoDB
 
 - Local MongoDB: run `mongod`
 - Or use MongoDB Atlas URI in `MONGO_URI`
 
-### Step 5: Run backend
+### Step 6: Run backend
 
 ```bash
 cd server
 npm run dev
 ```
 
-### Step 6: Run frontend
+### Step 7: Run frontend
 
 Open a second terminal:
 
@@ -177,27 +226,20 @@ cd client
 npm run dev
 ```
 
-### Step 7: Use the app
+### Step 8: Use the app
 
 - Frontend: `http://localhost:5173`
 - Backend health: `http://localhost:5000/api/health`
 
-## 6. Admin Access Setup
+## 7. Admin Access Setup
 
-- Set `ADMIN_EMAIL` in `server/.env`.
-- Signup using the same email.
-- That user is automatically assigned `admin` role.
-- Login and open `/admin`.
+- Set `ADMIN_EMAIL` in `server/.env`
+- Signup using the same email
+- That user is automatically assigned `admin` role
+- Login and open `/admin`
 
-## 7. Validation Done
+## 8. Validation Done
 
 - Frontend production build successful
 - Backend syntax checks passed
-
-## 8. Next Upgrade Ideas
-
-- Evidence upload (screenshots/documents)
-- Email alerts for status changes
-- Pagination + CSV export for admin reports
-- Integrate external threat intelligence APIs
-- Add automated tests (Jest/Supertest/RTL)
+- Backend runtime dependencies audited with `npm audit --omit=dev` (0 vulnerabilities)

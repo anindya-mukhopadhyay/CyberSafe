@@ -45,7 +45,9 @@ export const AuthProvider = ({ children }) => {
 
         if (token && cachedUser) {
           setUser(JSON.parse(cachedUser));
-          await api.get('/auth/me');
+          const { data } = await api.get('/auth/me');
+          setUser(data.user);
+          localStorage.setItem('cybersafe_user', JSON.stringify(data.user));
         }
       } catch (error) {
         clearAuth();

@@ -28,6 +28,15 @@ const reportSchema = new mongoose.Schema(
       default: '',
       trim: true,
     },
+    evidenceFiles: [
+      {
+        filename: { type: String, required: true },
+        originalName: { type: String, required: true },
+        mimeType: { type: String, required: true },
+        size: { type: Number, required: true },
+        url: { type: String, required: true },
+      },
+    ],
     status: {
       type: String,
       enum: ['pending', 'investigating', 'resolved'],

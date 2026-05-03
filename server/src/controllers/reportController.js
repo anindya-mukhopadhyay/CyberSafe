@@ -1,4 +1,6 @@
+import { getIO } from '../config/socket.js';
 import { Report } from '../models/Report.js';
+import { sendEmailAlert } from '../utils/emailService.js';
 
 const severityWeightsByType = {
   phishing: 22,
@@ -53,6 +55,36 @@ const determineSeverity = ({ incidentType, description, urlOrPhone }) => {
   return 'low';
 };
 
+const mapEvidenceFiles = (req) => {
+  const files = req.files || [];
+  return files.map((file) => ({
+    filename: file.filename,
+    originalName: file.originalname,
+    mimeType: file.mimetype,
+    size: file.size,
+    url: `${req.protocol}://${req.get('host')}/uploads/${file.filename}`,
+  }));
+};
+
+const notifyRealtime = ({ action, report }) => {
+  const io = getIO();
+  if (!io) {
+    return;
+  }
+  const userId = report.createdBy?.toString?.() || String(report.createdBy);
+
+  const payload = {
+    action,
+    reportId: report._id,
+    status: report.status,
+    severity: report.severity,
+    updatedAt: report.updatedAt,
+  };
+
+  io.to('admins').emit('reports:updated', payload);
+  io.to(`user:${userId}`).emit('reports:updated', payload);
+};
+
 export const createReport = async (req, res) => {
   try {
     const { name, email, incidentType, description, urlOrPhone } = req.body;
@@ -64,6 +96,7 @@ export const createReport = async (req, res) => {
     }
 
     const severity = determineSeverity({ incidentType, description, urlOrPhone });
+    const evidenceFiles = mapEvidenceFiles(req);
 
     const report = await Report.create({
       name,
@@ -71,10 +104,24 @@ export const createReport = async (req, res) => {
       incidentType,
       description,
       urlOrPhone,
+      evidenceFiles,
       severity,
       createdBy: req.user._id,
       statusHistory: [{ status: 'pending', changedBy: req.user._id }],
     });
+
+    notifyRealtime({ action: 'created', report });
+
+    if (process.env.ADMIN_EMAIL) {
+      await sendEmailAlert({
+        to: process.env.ADMIN_EMAIL,
+        subject: `New CyberSafe report (${incidentType})`,
+        text: `A new report was submitted by ${name} (${email}).\nSeverity: ${severity}\nStatus: ${report.status}`,
+        html: `<p>A new report was submitted by <strong>${name}</strong> (${email}).</p><p>Severity: <strong>${severity}</strong></p><p>Status: <strong>${report.status}</strong></p>`,
+      }).catch((error) => {
+        console.error('Failed to send admin alert email:', error.message);
+      });
+    }
 
     return res.status(201).json({ message: 'Report submitted successfully', report });
   } catch (error) {
@@ -141,6 +188,17 @@ export const updateReportStatus = async (req, res) => {
     report.status = status;
     report.statusHistory.push({ status, changedBy: req.user._id });
     await report.save();
+
+    notifyRealtime({ action: 'status-updated', report });
+
+    await sendEmailAlert({
+      to: report.email,
+      subject: `CyberSafe case update: ${status}`,
+      text: `Your report (${report.incidentType}) is now marked as ${status}.`,
+      html: `<p>Your CyberSafe report (<strong>${report.incidentType}</strong>) is now marked as <strong>${status}</strong>.</p>`,
+    }).catch((error) => {
+      console.error('Failed to send reporter update email:', error.message);
+    });
 
     return res.status(200).json({ message: 'Report status updated', report });
   } catch (error) {

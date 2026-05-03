@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { io } from 'socket.io-client';
 import api from '../api/axios';
 
 const typeOptions = ['', 'phishing', 'fraud', 'harassment', 'identity_theft', 'other'];
@@ -19,10 +20,15 @@ const AdminDashboardPage = () => {
   const [reports, setReports] = useState([]);
   const [overview, setOverview] = useState(emptyOverview);
   const [filters, setFilters] = useState({ type: '', status: '', severity: '', q: '' });
+  const filtersRef = useRef(filters);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState('');
   const [clock, setClock] = useState(new Date());
+
+  useEffect(() => {
+    filtersRef.current = filters;
+  }, [filters]);
 
   const topIncident = useMemo(() => {
     if (!overview.typeDistribution.length) {
@@ -38,7 +44,7 @@ const AdminDashboardPage = () => {
     return () => clearInterval(timer);
   }, []);
 
-  const fetchReports = async (nextFilters = filters, silent = false) => {
+  const fetchReports = async (nextFilters, silent = false) => {
     try {
       if (!silent) {
         setLoading(true);
@@ -72,18 +78,34 @@ const AdminDashboardPage = () => {
     }
   };
 
-  const refreshAll = async (silent = false) => {
-    await Promise.all([fetchReports(filters, silent), fetchOverview()]);
+  const refreshAll = async (nextFilters = filtersRef.current, silent = false) => {
+    await Promise.all([fetchReports(nextFilters, silent), fetchOverview()]);
   };
 
   useEffect(() => {
-    refreshAll();
+    refreshAll(filtersRef.current);
+
+    const autoRefresh = setInterval(() => {
+      refreshAll(filtersRef.current, true);
+    }, 20000);
+
+    return () => clearInterval(autoRefresh);
   }, []);
 
   useEffect(() => {
-    const autoRefresh = setInterval(() => refreshAll(true), 20000);
-    return () => clearInterval(autoRefresh);
-  }, [filters]);
+    const socket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000', {
+      transports: ['websocket'],
+    });
+
+    socket.emit('dashboard:join');
+    socket.on('reports:updated', () => {
+      refreshAll(filtersRef.current, true);
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
 
   const onFilterChange = (e) => {
     const nextFilters = { ...filters, [e.target.name]: e.target.value };
@@ -91,19 +113,19 @@ const AdminDashboardPage = () => {
   };
 
   const onApplyFilters = () => {
-    fetchReports(filters);
+    refreshAll(filters);
   };
 
   const onClearFilters = () => {
     const nextFilters = { type: '', status: '', severity: '', q: '' };
     setFilters(nextFilters);
-    fetchReports(nextFilters);
+    refreshAll(nextFilters);
   };
 
   const onStatusUpdate = async (reportId, status) => {
     try {
       await api.patch(`/reports/${reportId}/status`, { status });
-      refreshAll(true);
+      refreshAll(filtersRef.current, true);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to update report status');
     }
@@ -122,7 +144,7 @@ const AdminDashboardPage = () => {
           <p>Live System Time</p>
           <h3>{clock.toLocaleTimeString()}</h3>
           <span>{clock.toLocaleDateString()}</span>
-          <button className="btn btn-secondary" onClick={() => refreshAll(true)} disabled={syncing}>
+          <button className="btn btn-secondary" onClick={() => refreshAll(filtersRef.current, true)} disabled={syncing}>
             {syncing ? 'Syncing...' : 'Manual Sync'}
           </button>
         </aside>
@@ -252,6 +274,22 @@ const AdminDashboardPage = () => {
               <p>
                 <strong>Status Log Entries:</strong> {report.statusHistory?.length || 1}
               </p>
+
+              {report.evidenceFiles?.length > 0 && (
+                <div className="evidence-links">
+                  <strong>Attached Evidence Files:</strong>
+                  <ul>
+                    {report.evidenceFiles.map((file) => (
+                      <li key={file.filename}>
+                        <a href={file.url} target="_blank" rel="noreferrer">
+                          {file.originalName}
+                        </a>{' '}
+                        ({Math.ceil(file.size / 1024)} KB)
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               <div className="row-actions">
                 <button
